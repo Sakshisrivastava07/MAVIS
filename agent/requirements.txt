@@ -1,0 +1,5 @@
+﻿# Agent dependencies. Versions are bounded to the compatible LiveKit 1.x API.
+livekit-agents[openai,silero]>=1.8.4,<1.9
+livekit-api>=1.2.1,<2
+python-dotenv>=1.2.1,<2
+

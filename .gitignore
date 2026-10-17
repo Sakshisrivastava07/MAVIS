@@ -1,0 +1,19 @@
+﻿# Python environments, secrets, downloaded models, and local runtime files
+.env*
+!.env.example
+.venv/
+venv/
+**/.venv/
+**/venv/
+node_modules/
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+*.log
+*.csv
+!eval/latency_log.csv
+speaches-cache/
+tools/*.exe
+# Python environment shared by the Agent, API, and scripts.
+.venv/
