@@ -1,4 +1,4 @@
-﻿# MAVIS: local virtual phone prototype
+# MAVIS: local virtual phone prototype
 
 MAVIS is a student demo of a hospital call intake assistant. Calls run between a browser virtual phone and a self-hosted LiveKit server; no SIM, phone provider, public phone number, or cloud host is used. Use invented caller IDs and synthetic examples only. This is a demonstration, not a medical service. Never enter real patient information.
 
