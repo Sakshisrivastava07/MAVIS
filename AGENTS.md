@@ -9,3 +9,5 @@ Verify changing APIs from the installed package source/docs and the running Spea
 Build in stages from the user's original brief. Complete Stages 1, 2 and 3, run each requested verification, report results and manual steps, then STOP. Do not start Stage 4 (audio evaluation, nurse page, follow-up page) until the user explicitly says `continue`.
 
 Keep `.env`, virtual environments, downloaded models, Node modules and Python caches out of git. `.env.example` files are safe templates. For browser microphone access use localhost. Do not enter any real clinical information: this is a demo, not medical care. `safety_gate()` is only a future placeholder and must not be described as a working rule-based emergency feature.
+
+Keep docs/PROJECT_PROGRESS.md current whenever project work changes implementation, verification, or scope. Update it in the same change, with evidence for completed work. Do not mark checks as passing unless they were run.

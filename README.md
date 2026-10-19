@@ -1,112 +1,229 @@
-# MAVIS: local virtual phone prototype
+# MAVIS — Local Virtual Hospital Call-Centre Assistant
 
-MAVIS is a student demo of a hospital call intake assistant. Calls run between a browser virtual phone and a self-hosted LiveKit server; no SIM, phone provider, public phone number, or cloud host is used. Use invented caller IDs and synthetic examples only. This is a demonstration, not a medical service. Never enter real patient information.
+MAVIS is a free, local prototype of a simulated hospital call-centre voice assistant. Speak to it from a browser virtual phone using WebRTC. The project is intended for a student demonstration and uses fictional callers and scenarios only. It is not medical care; never enter real patient information.
 
-## What runs locally
+See [docs/PROJECT_PROGRESS.md](docs/PROJECT_PROGRESS.md) for the implementation estimate, completed work, remaining tasks, and verification record. Update it alongside future project changes.
 
-- LiveKit dev server carries WebRTC audio on `ws://127.0.0.1:7880`.
-- Speaches runs in a CPU Docker container at `http://localhost:8000/v1` and handles local speech recognition and speech generation.
-- The Python Agent joins each room and uses Groq for its language model. The LLM request is the only application data sent outside the computer.
-- FastAPI on port 8001 creates unique rooms and short-lived browser tokens.
-- `web/index.html` is a plain browser phone at port 5500.
+## 📋 Contents
 
-See [docs/architecture.md](docs/architecture.md) for a diagram.
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Project structure](#-project-structure)
+- [Requirements](#-requirements)
+- [Installation](#-installation)
+- [Download speech models](#-download-speech-models)
+- [Run MAVIS](#-run-mavis)
+- [Verify and try a call](#-verify-and-try-a-call)
+- [API endpoints](#-api-endpoints)
+- [Troubleshooting](#-troubleshooting)
+- [Current scope](#-current-scope)
 
-## Files in plain language
+## ✨ Features
 
-- `agent/agent.py`: LiveKit voice worker, the AI's prompt, speech engines and event log.
-- `api/server.py`: local health endpoint and room-token creation.
-- `web/index.html`: phone screen, keypad, microphone and audio playback.
-- `scripts/start-livekit.ps1` and `.sh`: start LiveKit natively.
-- `scripts/start-speaches.ps1` and `.sh`: start Speaches CPU in Docker with a saved model cache.
-- `scripts/run-app.ps1` and `.sh`: open the web phone, token API and agent.
-- `scripts/smoke_test.py`: checks the local services, model round trip, Groq and token API.
-- `docs/architecture.md`: explains how audio and tokens move through the demo.
-- `.env.example` and the service-specific examples: safe starting configuration; put your actual key only in the ignored root `.env`.
+- Browser-based virtual phone with a keypad, microphone, and audio playback.
+- Local WebRTC calls through a self-hosted LiveKit development server; no SIM, real phone number, SIP provider, or cloud host.
+- Local speech recognition and speech generation through Speaches running on CPU in Docker.
+- A Python LiveKit Agent that uses Groq's free tier for chat responses. The language-model request is the only application data sent outside the computer.
+- FastAPI service that creates a room and short-lived browser token using a synthetic caller ID.
+- Local smoke check for service connectivity, speech round trip, Groq, and token creation.
 
-## Setup (Windows)
+## 🏗️ Architecture
 
-Python 3.11 and Docker CLI are available in the current workspace. A Windows LiveKit server binary (version 1.13.7) is already present at `tools/livekit-server.exe`, and the start script uses it. For another OS, download the matching binary from [LiveKit Server releases](https://github.com/livekit/livekit/releases). Docker Desktop is installed but must be running. Copy the Groq API key from your account into the root `.env` file. Do not put it in source code.
+```mermaid
+flowchart LR
+  Browser[Virtual phone<br/>localhost:5500] -->|temporary token| API[FastAPI<br/>localhost:8001]
+  API --> Browser
+  Browser <-->|WebRTC audio| LK[LiveKit dev server<br/>localhost:7880]
+  Agent[Python LiveKit Agent] <-->|WebRTC audio| LK
+  Agent -->|speech recognition and generation| Speech[Speaches CPU<br/>localhost:8000]
+  Agent -->|chat completion| Groq[Groq free tier]
+```
 
-From the project root in PowerShell:
+The browser requests a temporary room token from the local API. The browser and agent join that room on the local LiveKit server. The agent uses Speaches for speech-to-text and text-to-speech, and Groq for the conversational response. See [docs/architecture.md](docs/architecture.md) for details.
+
+## 📁 Project structure
+
+```text
+MAVIS/
+├── agent/
+│   ├── agent.py                 # LiveKit voice agent and conversation prompt
+│   └── requirements.txt         # Agent dependencies
+├── api/
+│   ├── server.py                # Health check and call-token API
+│   └── requirements.txt         # API dependencies
+├── docs/architecture.md         # Audio and token flow
+├── scripts/
+│   ├── start-livekit.*          # Start the local LiveKit dev server
+│   ├── start-speaches.*         # Start Speaches CPU in Docker
+│   ├── run-app.*                # Open the web, API, and agent processes
+│   └── smoke_test.py            # Check local service connections
+├── tools/                       # Optional local LiveKit server binary
+├── web/index.html               # Browser virtual phone
+├── .env.example                 # Safe configuration template
+└── README.md
+```
+
+## 💻 Requirements
+
+- Python 3.11 or newer.
+- Docker Desktop (Windows/macOS) or Docker Engine (Linux), running.
+- A Groq API key with free-tier access. Store it only in the ignored root `.env` file.
+- A LiveKit server binary for your operating system. This workspace includes `tools/livekit-server.exe` version 1.13.7 for Windows; other platforms can get the matching binary from [LiveKit Server releases](https://github.com/livekit/livekit/releases).
+- Internet access for initial Python package and model downloads, and for loading the pinned LiveKit browser client bundle.
+
+## ⚙️ Installation
+
+Run commands from the MAVIS project root.
+
+### Windows (PowerShell)
 
 ```powershell
-Copy-Item agent/.env.example .env
-# Edit .env and set GROQ_API_KEY. Keep the local model names already listed.
+Copy-Item .env.example .env
+# Edit .env and set GROQ_API_KEY. Keep the model IDs from the template.
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 python -m pip install -r agent/requirements.txt -r api/requirements.txt
 ```
 
-The dependency bounds resolve and were installed with Python 3.11 on Windows. The common `.venv` is ignored by git.
+If PowerShell blocks environment activation, call the environment's Python directly as shown in [Run MAVIS](#-run-mavis). The `.venv` folder and `.env` are ignored by git.
 
-## Setup (macOS/Linux)
-
-Install Python 3.11+, Docker Engine/Desktop, and the `livekit-server` binary for your OS from [LiveKit Server releases](https://github.com/livekit/livekit/releases). Then run:
+### macOS / Linux
 
 ```sh
-cp agent/.env.example .env
-# Edit .env and set GROQ_API_KEY.
+cp .env.example .env
+# Edit .env and set GROQ_API_KEY. Keep the model IDs from the template.
 python3.11 -m venv .venv
 . .venv/bin/activate
+python -m pip install --upgrade pip
 python -m pip install -r agent/requirements.txt -r api/requirements.txt
 ```
 
-## Run order: exactly five terminals
+Install the LiveKit server binary for your OS and make it available as `livekit-server` on `PATH`. Docker must be running before you start Speaches.
 
-Keep each command running in its own terminal, all from the MAVIS folder.
+## 🗣️ Download speech models
 
-1. PowerShell: `./scripts/start-livekit.ps1` (macOS/Linux: `sh scripts/start-livekit.sh`)
-2. PowerShell: `./scripts/start-speaches.ps1` (macOS/Linux: `sh scripts/start-speaches.sh`)
-3. PowerShell: `.\.venv\Scripts\python.exe -m uvicorn api.server:app --host 127.0.0.1 --port 8001` (macOS/Linux: `.venv/bin/python -m uvicorn api.server:app --host 127.0.0.1 --port 8001`)
-4. PowerShell: `.\.venv\Scripts\python.exe agent\agent.py dev` (macOS/Linux: `.venv/bin/python agent/agent.py dev`)
-5. PowerShell: `.\.venv\Scripts\python.exe -m http.server 5500 --directory web` (macOS/Linux: `.venv/bin/python -m http.server 5500 --directory web`)
+Speaches downloads models explicitly. Start it first (see the next section), then use a second terminal to list the exact IDs supported by the running registry and install the configured speech-recognition and speech-generation models.
 
-The LiveKit dev server uses `devkey` / `secret` by design. This is for local development only.
-
-## Download Speaches speech models
-
-Speaches explicitly downloads models; merely starting the container does not install them. Its documented route is `POST /v1/models/{model}`. After starting Speaches, open another PowerShell terminal:
+### Windows (PowerShell)
 
 ```powershell
-# See exact model IDs known by this running Speaches version
-Invoke-RestMethod http://localhost:8000/v1/registry?task=automatic-speech-recognition
-Invoke-RestMethod http://localhost:8000/v1/registry?task=text-to-speech
-# Install the selected IDs (downloads can take time)
-Invoke-RestMethod -Method Post http://localhost:8000/v1/models/Systran/faster-whisper-small
-Invoke-RestMethod -Method Post http://localhost:8000/v1/models/speaches-ai/Kokoro-82M-v1.0-ONNX
-Invoke-RestMethod http://localhost:8000/v1/models
+Invoke-RestMethod 'http://localhost:8000/v1/registry?task=automatic-speech-recognition'
+Invoke-RestMethod 'http://localhost:8000/v1/registry?task=text-to-speech'
+Invoke-RestMethod -Method Post 'http://localhost:8000/v1/models/Systran/faster-whisper-small'
+Invoke-RestMethod -Method Post 'http://localhost:8000/v1/models/speaches-ai/Kokoro-82M-v1.0-ONNX'
+Invoke-RestMethod 'http://localhost:8000/v1/models'
 ```
 
-The documented sample voice for the Kokoro ONNX model is `af_heart`. On a slow laptop, choose an available `tiny.en` or `base.en` faster-whisper model from the registry and set `STT_MODEL` in `.env` to its exact ID. The startup volume persists the Hugging Face model cache. Verify IDs with the running service's `/v1/models` list if its version changes.
+### macOS / Linux
 
-The default Groq model is `openai/gpt-oss-20b` (available in the current Groq API documentation). Models and free-plan access can change; verify it is available to your account. The smoke check makes a tiny real request and reports any key, model, access, or quota issue. Never upgrade to a paid tier for this project.
+```sh
+curl 'http://localhost:8000/v1/registry?task=automatic-speech-recognition'
+curl 'http://localhost:8000/v1/registry?task=text-to-speech'
+curl -X POST 'http://localhost:8000/v1/models/Systran/faster-whisper-small'
+curl -X POST 'http://localhost:8000/v1/models/speaches-ai/Kokoro-82M-v1.0-ONNX'
+curl 'http://localhost:8000/v1/models'
+```
 
-## Try the phone
+The configured Kokoro voice is `af_heart`. If the default Whisper model is too slow, select an available `tiny.en` or `base.en` model from the registry and set `STT_MODEL` in `.env` to its exact ID. The Docker volume `mavis-speaches-cache` persists downloaded models. Registry contents can change with the Speaches image; check the running service before changing model IDs or voice settings.
 
-After all five services are running, run `python scripts/smoke_test.py`. For a true call test, open `http://localhost:5500`, allow microphone access, and click Call. Use a headset to avoid echo. Expected greeting: “Hello, this is MAVIS, an AI assistant. This is a demo. How can I help you?” Speak only fictional examples. Click Hang up to end.
+## 🚀 Run MAVIS
 
-| Symptom | Likely cause | Fix |
+Start each component in its own terminal from the project root. Wait for LiveKit and Speaches to start before starting the API, agent, and browser server.
+
+### Windows (PowerShell)
+
+**Terminal 1 — LiveKit**
+
+```powershell
+./scripts/start-livekit.ps1
+```
+
+**Terminal 2 — Speaches**
+
+```powershell
+./scripts/start-speaches.ps1
+```
+
+**Terminal 3 — Call-token API**
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn api.server:app --host 127.0.0.1 --port 8001
+```
+
+**Terminal 4 — Voice agent**
+
+```powershell
+.\.venv\Scripts\python.exe agent\agent.py dev
+```
+
+**Terminal 5 — Browser phone**
+
+```powershell
+.\.venv\Scripts\python.exe -m http.server 5500 --directory web
+```
+
+Alternatively, after starting LiveKit and Speaches, `./scripts/run-app.ps1` opens the API, agent, and web server in separate PowerShell windows.
+
+### macOS / Linux
+
+Use one terminal per process:
+
+```sh
+sh scripts/start-livekit.sh
+sh scripts/start-speaches.sh
+.venv/bin/python -m uvicorn api.server:app --host 127.0.0.1 --port 8001
+.venv/bin/python agent/agent.py dev
+.venv/bin/python -m http.server 5500 --directory web
+```
+
+Alternatively, after starting LiveKit and Speaches, run `sh scripts/run-app.sh` to open the API, agent, and web server processes.
+
+The LiveKit development server uses the built-in `devkey` / `secret` configuration for local development. Do not expose it to a network.
+
+## ✅ Verify and try a call
+
+With the required services running and both Speaches models installed, run:
+
+```powershell
+# Windows
+.\.venv\Scripts\python.exe scripts\smoke_test.py
+```
+
+```sh
+# macOS / Linux
+.venv/bin/python scripts/smoke_test.py
+```
+
+The script reports PASS or FAIL for the LiveKit socket, Speaches model list, speech-to-text round trip, Groq chat request, and `POST /call/start`. The API, LiveKit, Speaches, models, and a working Groq free-tier key must be available for all checks to pass.
+
+For a browser call, open [http://localhost:5500](http://localhost:5500), allow microphone access, and click **Call**. Use a headset to reduce echo. Click **Hang up** to end the call. The local API health endpoint is [http://127.0.0.1:8001/health](http://127.0.0.1:8001/health).
+
+## 📡 API endpoints
+
+| Method | Endpoint | Purpose |
 | --- | --- | --- |
-| Token API down | Terminal 3 stopped or port 8001 blocked | Restart it; open `http://127.0.0.1:8001/health`. |
-| Agent not registered / no greeting | Agent terminal stopped, LiveKit unavailable, or missing room dispatch | Start terminals 1 and 4; check the Agent logs for connection errors. |
-| No audio | Browser microphone permission, playback blocked, or Speaches model missing | Use localhost, allow microphone, click the page if playback needs activation, download both models, and check Speaches logs. |
-| Groq 429 / model unavailable | Free-plan rate limit or model access changed | Wait for the quota window and check the model ID/account access; do not enable paid billing. |
-| Whisper responds slowly | CPU model too large or first run downloads/model warms up | Let initial startup finish or select an available `tiny.en`/`base.en` model. |
+| `GET` | `/health` | Check that the local FastAPI service is responding. |
+| `POST` | `/call/start` | Create a call room and return a short-lived browser token with a synthetic caller identity. |
 
-## Verify Stage 1–3
+The API listens on `127.0.0.1:8001` when started with the command above. It does not provide a public endpoint.
 
-`python scripts/smoke_test.py` prints one PASS or FAIL per check: LiveKit socket, Speaches model list, generated speech-to-text round trip, Groq chat, and `POST /call/start`. The call check requires the API to be running; the other service checks require their respective service and models. It never uses real patient data.
+## 🔧 Troubleshooting
 
-## Current implementation limits
+| Problem | Check |
+| --- | --- |
+| API health check fails | Confirm Terminal 3 is running and open `http://127.0.0.1:8001/health`. |
+| Agent does not join or greet | Confirm LiveKit and the agent are running; inspect the agent terminal for connection or Groq errors. |
+| No audio | Use `localhost`, allow microphone access, click the page if playback is blocked, and confirm both Speaches models are installed. Check Docker and Speaches logs. |
+| Speaches model is missing | Query `/v1/models` on the running service and install a model ID from its registry. |
+| Groq reports 401, 429, or unavailable model | Check `GROQ_API_KEY`, account model access, and free-tier quota. Model availability can change. |
+| Speech recognition is slow | Allow the initial download and warm-up to finish, or choose an available smaller `tiny.en` / `base.en` model in `.env`. |
+| Browser client does not load offline | The page loads its pinned LiveKit browser bundle from jsDelivr and needs internet access for that package. |
 
-- This prototype targets the installed LiveKit Agents 1.8.x API. Runtime compatibility with a local server and Speaches image could not be exercised until those services and model downloads are started.
-- The latency CSV records framework event timestamps as UTC rows. `llm_response_ready` is the completed assistant message event, not the first streamed token; first-token timing and paired per-turn durations remain to be instrumented.
-- `safety_gate()` is intentionally a no-op placeholder. No medical rules or clinical decisions are implemented.
-- The web client uses the pinned LiveKit browser bundle URL from jsDelivr; initial page load needs internet access for that open-source package.
+## 📌 Current scope
 
-## Stage 4
+MAVIS implements the local phone, token API, LiveKit agent, local speech services, and Groq response path for Stages 1–3. Runtime compatibility with LiveKit and Speaches depends on the installed versions and downloaded models; if those services have not been started, the full call path cannot be verified yet.
 
-Stage 4 is intentionally not implemented yet. It adds the audio evaluation, latency summary, nurse join and simulated follow-up call flows after the user asks to continue.
+The agent's `safety_gate()` is a no-op placeholder. MAVIS has no working emergency detection, medical rules, or clinical decision support. The latency log records framework event timestamps; `llm_response_ready` is the completed assistant message event, not first streamed-token timing.
 
-Before the first agent run, warm the packaged local VAD assets if needed: `.\.venv\Scripts\python.exe agent\agent.py download-files` on Windows, or `.venv/bin/python agent/agent.py download-files` on macOS/Linux. LiveKit Agents 1.8.4 includes this CLI command; this project has not needed a downloaded turn model in the inspected VAD configuration.
+Stage 4 (audio evaluation, nurse join, and simulated follow-up call flows) has not been implemented. Begin it only after the user explicitly asks to continue.
