@@ -224,6 +224,6 @@ The API listens on `127.0.0.1:8001` when started with the command above. It does
 
 MAVIS implements the local phone, token API, LiveKit agent, local speech services, and Groq response path for Stages 1–3. Runtime compatibility with LiveKit and Speaches depends on the installed versions and downloaded models; if those services have not been started, the full call path cannot be verified yet.
 
-The agent's `safety_gate()` is a no-op placeholder. MAVIS has no working emergency detection, medical rules, or clinical decision support. The latency log records framework event timestamps; `llm_response_ready` is the completed assistant message event, not first streamed-token timing.
+The agent includes an illustrative, case-insensitive red-flag phrase check and department keyword routing for the local demo. These checks are not clinically validated, do not provide medical rules or decision support, and do not connect a caller to a nurse. Demo bookings are stored only in process memory and are not real appointments or patient-portal records. The latency log records framework event timestamps; `llm_response_ready` is the completed assistant message event, not first streamed-token timing.
 
 Stage 4 (audio evaluation, nurse join, and simulated follow-up call flows) has not been implemented. Begin it only after the user explicitly asks to continue.
