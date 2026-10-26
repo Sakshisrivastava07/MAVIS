@@ -628,7 +628,7 @@ async def entrypoint(ctx: JobContext) -> None:
         except Exception:
             logger.exception("Could not save the MAVIS call transcript")
 
-    base_url = os.getenv("SPEACHES_BASE_URL", "http://localhost:8000/v1")
+    base_url = os.getenv("SPEACHES_BASE_URL", "http://127.0.0.1:8000/v1")
     session = AgentSession(
         vad=silero.VAD.load(),
         stt=openai.STT(
